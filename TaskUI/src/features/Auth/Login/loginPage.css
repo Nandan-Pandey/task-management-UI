@@ -1,0 +1,318 @@
+/* taskLoginPage.css */
+
+/* Main Layout */
+.task-login-layout {
+	min-height: 90vh;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	padding: 20px;
+}
+
+.task-login-content {
+	width: 100%;
+	max-width: 1000px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+/* Card Styling */
+.task-login-card {
+	width: 100%;
+	border-radius: 16px;
+	overflow: hidden;
+	box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+	border: none;
+}
+
+.task-login-card .ant-card-body {
+	padding: 0;
+}
+
+.task-login-sections {
+	display: flex;
+	min-height: 500px;
+	background: white;
+}
+
+/* Left Section - Branding */
+.task-left-section {
+	flex: 1;
+	background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 48px;
+	position: relative;
+	overflow: hidden;
+}
+
+.task-left-section::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="20" cy="20" r="2" fill="rgba(255,255,255,0.1)"/><circle cx="80" cy="40" r="1.5" fill="rgba(255,255,255,0.08)"/><circle cx="40" cy="80" r="1" fill="rgba(255,255,255,0.06)"/></svg>');
+	animation: float 20s ease-in-out infinite;
+}
+
+@keyframes float {
+	0%, 100% { transform: translateY(0px); }
+	50% { transform: translateY(-20px); }
+}
+
+.task-brand-content {
+	text-align: center;
+	color: white;
+	z-index: 1;
+	position: relative;
+}
+
+.task-icon-container {
+	width: 80px;
+	height: 80px;
+	background: rgba(255, 255, 255, 0.1);
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0 auto 24px;
+	backdrop-filter: blur(10px);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.task-management-icon {
+	font-size: 36px;
+	display: block;
+}
+
+.task-brand-title {
+	color: white !important;
+	margin-bottom: 16px !important;
+	font-weight: 700;
+	font-size: 32px !important;
+}
+
+.task-brand-subtitle {
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 16px;
+	line-height: 1.5;
+	margin-bottom: 32px;
+	display: block;
+}
+
+.task-features {
+	text-align: left;
+	max-width: 280px;
+	margin: 0 auto;
+}
+
+.task-feature-item {
+	display: flex;
+	align-items: center;
+	margin-bottom: 16px;
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 14px;
+}
+
+.feature-icon {
+	background: rgba(255, 255, 255, 0.2);
+	border-radius: 50%;
+	width: 20px;
+	height: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 12px;
+	font-size: 12px;
+	font-weight: bold;
+}
+
+/* Right Section - Login Form */
+.task-right-section {
+	flex: 1;
+	background: #f8f9fa;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 48px;
+}
+
+.task-login-form-container {
+	width: 100%;
+	max-width: 360px;
+	text-align: center;
+}
+
+.task-form-header {
+	margin-bottom: 32px;
+}
+
+.task-login-title {
+	color: #2c3e50 !important;
+	margin-bottom: 8px !important;
+	font-weight: 600;
+}
+
+.task-login-subtitle {
+	color: #6c757d;
+	font-size: 14px;
+	display: block;
+}
+
+/* Form Styling */
+.task-login-form {
+	text-align: left;
+}
+
+.task-login-input {
+	height: 48px;
+	border-radius: 8px;
+	border: 1px solid #e1e5e9;
+	background: white;
+	transition: all 0.3s ease;
+}
+
+.task-login-input:hover {
+	border-color: #3498db;
+}
+
+.task-login-input:focus {
+	border-color: #3498db;
+	box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.task-input-icon {
+	color: #6c757d;
+}
+
+.task-login-button {
+	height: 48px;
+	background: linear-gradient(135deg, #3498db 0%, #2980b9 100%) !important;
+	border: none !important;
+	border-radius: 8px;
+	font-weight: 600;
+	font-size: 16px;
+	transition: all 0.3s ease;
+	margin-top: 8px;
+}
+
+.task-login-button:hover {
+	background: linear-gradient(135deg, #2980b9 0%, #1f5582 100%) !important;
+	transform: translateY(-2px);
+	box-shadow: 0 8px 20px rgba(52, 152, 219, 0.3);
+}
+
+.task-login-footer {
+	margin-top: 24px;
+	margin-bottom: 32px;
+}
+
+.task-forgot-password {
+	color: #3498db;
+	cursor: pointer;
+	font-size: 14px;
+	transition: color 0.3s ease;
+}
+
+.task-forgot-password:hover {
+	color: #2980b9;
+	text-decoration: underline;
+}
+
+.task-copyright-text {
+	color: #6c757d;
+	font-size: 12px;
+	text-align: center;
+	display: block;
+	margin-top: 24px;
+}
+
+/* Form Item Styling */
+.ant-form-item {
+	margin-bottom: 20px;
+}
+
+.ant-form-item-explain-error {
+	color: #e74c3c;
+	margin-top: 4px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+	.task-login-layout {
+		padding: 16px;
+	}
+	
+	.task-login-sections {
+		flex-direction: column;
+	}
+	
+	.task-left-section {
+		padding: 32px 24px;
+		min-height: auto;
+	}
+	
+	.task-right-section {
+		padding: 32px 24px;
+	}
+	
+	.task-brand-title {
+		font-size: 24px !important;
+	}
+	
+	.task-brand-subtitle {
+		font-size: 14px;
+	}
+	
+	.task-login-form-container {
+		max-width: 100%;
+	}
+}
+
+@media (max-width: 980px) {
+	.task-left-section {
+		display: none;
+	}
+	
+	.task-right-section {
+		border-radius: 16px;
+	}
+}
+
+/* Animation for smooth transitions */
+.task-login-card {
+	animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+	from {
+		opacity: 0;
+		transform: translateY(30px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* Focus states for better accessibility */
+.task-login-input:focus-within {
+	border-color: #3498db;
+	box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+/* Loading state for button */
+.task-login-button.ant-btn-loading {
+	background: linear-gradient(135deg, #bdc3c7 0%, #95a5a6 100%) !important;
+}
+
+/* Enhanced hover effects */
+.task-login-card:hover {
+	box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+	transition: box-shadow 0.3s ease;
+}

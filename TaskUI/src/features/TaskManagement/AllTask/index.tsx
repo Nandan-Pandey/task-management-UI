@@ -7,6 +7,7 @@ import { getAllTask } from '../../../redux/features/task/getAllTask';
 import type { RootState } from '../../../redux/store';
 import { TaskID } from '../../../redux/features/task/taskById';
 import TaskCard from '../taskCard';
+import { UserData } from '../../../redux/features/task/userMaster';
 const { TextArea } = Input;
 const { Option } = Select;
 const { Text, Title } = Typography;
@@ -80,13 +81,14 @@ const TaskCardContainer: React.FC = () => {
   
   const { getAllTaskRes }:any = useSelector((state: RootState) => state?.AllTask);
     const [tasks, setTasks] = useState(getAllTaskRes?.data); 
-    const [isEditModalVisible, setIsEditModalVisible] = useState<boolean>(false);
+    const [isAddModalVisible, setIsAddModalVisible] = useState<boolean>(false);
 
   const dispatch=useDispatch();
    useEffect(() => {
     const fetchTasks = async () => {
       try {
         await dispatch(getAllTask());
+        await dispatch(UserData());
       } catch (error) {
         console.error("Error fetching tasks:", error);
       }
@@ -111,7 +113,7 @@ const TaskCardContainer: React.FC = () => {
   };
 
    const handleAddTask = () => {
-    setIsEditModalVisible?.(true);
+    setIsAddModalVisible?.(true);
     console.log("Add new task clicked");
     // Example: navigate('/add-task') or setShowAddTaskModal(true)
   };
@@ -192,8 +194,8 @@ const TaskCardContainer: React.FC = () => {
             key={taskData.task._id}
             taskData={taskData}
             onTaskUpdate={handleTaskUpdate}
-            setIsEditModalVisible={setIsEditModalVisible}
-            isEditModalVisible={isEditModalVisible}
+            setIsAddModalVisible={setIsAddModalVisible}
+            isAddModalVisible={isAddModalVisible}
           />
         ))}
       </div>

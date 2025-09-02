@@ -1,68 +1,131 @@
-import React, { use, useEffect, useState } from 'react';
-import { Modal, Form, Input, Select, DatePicker, InputNumber, Button, Space, List, Card, Typography, Tag } from 'antd';
-import { EditOutlined, UserOutlined, CalendarOutlined, FlagOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, PlusOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { Modal, Form, Input, Select, DatePicker, InputNumber, Button, Space, List, Card, Typography, Tag, message, Popconfirm } from 'antd';
+import { EditOutlined, UserOutlined, CalendarOutlined, FlagOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, PlusOutlined, MailOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useDispatch, useSelector } from 'react-redux';
 import { TaskID } from '../../redux/features/task/taskById';
-import {  MailOutlined } from '@ant-design/icons';
 const { TextArea } = Input;
 const { Option } = Select;
 const { Text, Title } = Typography;
-
-
-interface subtasks {
-  _id?: string;
-  title: string;
-  description: string;
-  dueDate?: string;
-  priority?: 'High' | 'Medium' | 'Low';
-  assignees: string[];
-  status: 'To Do' | 'In Progress' | 'Done';
-  storyPoints?: number;
-}
-interface EditFormData {
-  title: string;
-  description: string;
-  dueDate: dayjs.Dayjs | null;
-  priority: string;
-  status: string;
-  storyPoints: number;
-  assignees: string[];
-  subtasks: subtasks[];
-  comments: Comment[];
-}
-interface StatusHistoryItem {
-  from: string;
-  to: string;
-  timestamp: string;
-  _id: string;
-}
-interface Task {
-  _id: string;
-  title: string;
-  description: string;
-  dueDate: string;
-  priority: 'High' | 'Medium' | 'Low';
-  assignees: string[];
-  status: 'To Do' | 'In Progress' | 'Done';
-  storyPoints: number;
-  statusHistory: StatusHistoryItem[];
-  comments: Comment[];
-  createdAt: string;
-  updatedAt: string;
-  __v: number;
-}
-
-
-const TaskCard: React.FC<any> = ({ taskData, onTaskUpdate,setIsEditModalVisible,isEditModalVisible }) => {
-  const { task, subtaskTitles } = taskData;
-  const dispatch =useDispatch();
-  console.log('taskData in TaskCard:', taskData);
-  
+import './taskcard.css';
+import { CreateTask } from '../../redux/features/task/createTask';
+import { getAllTask } from '../../redux/features/task/getAllTask';
+import type { RootState } from '../../redux/store';
+import { AiStory } from '../../redux/features/task/story';
+import { AiSubTask } from '../../redux/features/task/SubTask';
+import type { EditFormData, Task } from '../../shared/types';
+import { EditTask } from '../../redux/features/task/editTask';
+import { DeleteAPI } from '../../redux/features/task/delete';
  
+ 
+ 
+ 
+const TaskCard: React.FC<any> = ({
+  taskData,
+  onTaskUpdate,
+  setIsAddModalVisible,
+  isAddModalVisible,
+  mode = 'edit', // 'edit' or 'add'
+  onTaskCreate
+}) => {
+  const { task, subtasks,totalStoryPoints } = taskData || {};
+  const subtaskdata=subtasks;
+ 
+  console.log(subtaskdata,task);
+ 
+  const dispatch = useDispatch();
+    const { UserDataRes }:any = useSelector((state: RootState) => state?.UserData);
+ 
+  // Separate states for edit and add modals
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editForm] = Form.useForm<EditFormData>();
+  const [descriptionSuggestion, setDescriptionSuggestion] = useState("");
+  const [currentDescription, setCurrentDescription] = useState("");
+  const [showSuggestion, setShowSuggestion] = useState(false);
+ 
+  // Enhanced description suggestions based on content analysis
+  const generateDescriptionSuggestion = (description: string, taskTitle: string) => {
+    if (description.length < 10) {
+      return `Consider expanding: "${taskTitle}" - Add specific implementation steps, acceptance criteria, and technical requirements to provide clear guidance for the assignee.`;
+    } else{
+   
+      return `Add technical context: "${description}" → Specify technologies, frameworks, or architectural considerations relevant to this development task.`;
+    }  
+  };
+ 
+  // Handle description change and suggestion generation
+  const handleDescriptionChange = (e: any) => {
+    const value = e.target.value;
+    setCurrentDescription(value);
+    editForm.setFieldsValue({ description: value });
+    const taskTitle = editForm.getFieldValue('title') || '';
+    const suggestion = generateDescriptionSuggestion(value, taskTitle);
+    setDescriptionSuggestion(suggestion);
+    setShowSuggestion(!!suggestion);
+  };
+ 
+  // Apply suggestion to description field
+  const applySuggestion = async () => {
+    if (descriptionSuggestion) {
+   const res =await  dispatch(AiStory( {"user-story":currentDescription}))
+   debugger
+      setCurrentDescription(res?.payload?.data?.data?.raw);
+      editForm.setFieldsValue({ description: res?.payload?.data?.data?.raw });
+      setShowSuggestion(false);
+      message.success('Description suggestion applied!');
+    }
+  };
+ 
+  // Handle intelligent subtask addition
+const addIntelligentSubtask = async () => {
+  try {
+    const currentSubtasks = editForm.getFieldValue('subtasks') || [];
+ 
+    // Call your AI subtask API
+    const result = await dispatch(
+      AiSubTask({ subtask: editForm.getFieldValue('title') })
+    );
+ 
+    const resSubtasks = result?.payload?.data?.data?.subtasks;
+ 
+    if (resSubtasks && resSubtasks.length > 0) {
+      // Map API subtasks to form-compatible structure
+      const mappedSubtasks = resSubtasks.map((subtask: any) => ({
+        title: subtask.title,
+        description: subtask.description,
+        priority: subtask.priority,
+        status: subtask.status,
+        assignees: subtask.assignees || [],
+        storyPoints: subtask.storyPoints,
+      }));
+ 
+      // Append new subtasks to the current form value
+      editForm.setFieldsValue({
+        subtasks: [...currentSubtasks, ...mappedSubtasks],
+      });
+ 
+      message.success('Intelligent subtask generated and added!');
+    } else {
+      message.warning('No subtasks returned from AI.');
+    }
+  } catch (error) {
+    console.error(error);
+    message.error('Failed to generate intelligent subtask.');
+  }
+};
+ 
 
-  // Format date as MM/DD/YYYY
+
+const handleDelete = async (taskId: string) => {
+ const res =await dispatch(DeleteAPI(taskId))
+ 
+  if( res?.payload?.status===200){ 
+    message.success('Task deleted successfully!');
+  await  dispatch(getAllTask()); 
+  }
+   
+};
+ 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       day: '2-digit',
@@ -70,7 +133,7 @@ const TaskCard: React.FC<any> = ({ taskData, onTaskUpdate,setIsEditModalVisible,
       year: 'numeric'
     });
   };
-
+ 
   const getPriorityColor = (priority: string) => {
     switch (priority.toLowerCase()) {
       case 'high': return '#ef4444';
@@ -79,7 +142,7 @@ const TaskCard: React.FC<any> = ({ taskData, onTaskUpdate,setIsEditModalVisible,
       default: return '#f59e0b';
     }
   };
-
+ 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'to do': return '#6b7280';
@@ -88,7 +151,7 @@ const TaskCard: React.FC<any> = ({ taskData, onTaskUpdate,setIsEditModalVisible,
       default: return '#6b7280';
     }
   };
-
+ 
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'to do': return <ExclamationCircleOutlined />;
@@ -97,750 +160,714 @@ const TaskCard: React.FC<any> = ({ taskData, onTaskUpdate,setIsEditModalVisible,
       default: return <ExclamationCircleOutlined />;
     }
   };
-
-
-
-  const handleEditClick = async () => {
-  const res = await dispatch(TaskID(task._id));
-
-  if (res?.payload?.data) {
-    const data = res.payload.data;
-  const subtasks = Array.isArray(data.subTask)
-  ? data.subTask.map((st:any) => ({
-      ...st,
-      dueDate: st.dueDate ? dayjs(st.dueDate) : null,
-    }))
-  : [];
-   editForm.setFieldsValue({
-  title: data.title,
-  description: data.description,
-  dueDate: data.dueDate ? dayjs(data.dueDate) : null,
-  priority: data.priority,
-  status: data.status,
-  storyPoints: data.storyPoints,
-  assignees: Array.isArray(data.assignees) ? data.assignees : [],
-  subtasks:subtasks,
-  comments: Array.isArray(data.comments) ? data.comments : [],
-});
-  }
-
-setIsEditModalVisible?.(true);;
-};
-
-  const handleEditCancel = () => {
-   setIsEditModalVisible?.(false);
-    editForm.resetFields();
-  };
-
-  const handleEditSubmit = async () => {
-    try {
-      const values = await editForm.validateFields();
-
-      // Create status history entry if status changed
-      const newStatusHistory = [...task.statusHistory];
-      if (values.status !== task.status) {
-        newStatusHistory.push({
-          from: task.status,
-          to: values.status,
-          timestamp: new Date().toISOString(),
-          _id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-        });
-      }
-
-      const updatedTask: Task = {
-        ...task,
-        title: values.title,
-        description: values.description,
-        dueDate: values.dueDate ? values.dueDate.toISOString() : task.dueDate,
-        priority: values.priority as 'High' | 'Medium' | 'Low',
-        status: values.status as 'To Do' | 'In Progress' | 'Done',
-        storyPoints: values.storyPoints,
-        assignees: values.assignees,
-        comments: values.comments || [],
-        statusHistory: newStatusHistory,
-        updatedAt: new Date().toISOString()
-      };
-
-      if (onTaskUpdate) {
-        onTaskUpdate(updatedTask);
-      }
-      setIsEditModalVisible?.(false);
-      console.log('Updated task:', updatedTask);
-      console.log('Updated subtasks:', values.subtasks);
-    } catch (error) {
-      console.error('Form validation failed:', error);
+ 
+  // Handle Edit Modal (for editing assignees only)
+const handleEditClick = async () => {
+  if (task) {
+    const res = await dispatch(TaskID(task._id));
+ 
+    if (res?.payload?.data) {
+      const data = res.payload.data;
+ 
+      // Map subtasks to form format
+      const mappedSubtasks = data.subtasks?.map((subtask: any) => ({
+        _id: subtask._id,
+        title: subtask.title,
+        description: subtask.description,
+        dueDate: subtask.dueDate ? dayjs(subtask.dueDate) : null,
+        priority: subtask.priority,
+        assignees: subtask.assignees || [],
+        status: subtask.status,
+        storyPoints: subtask.storyPoints,
+      }));
+ 
+      // Set all form fields with the fetched data
+      editForm.setFieldsValue({
+        title: data.title,
+        description: data.description,
+        dueDate: data.dueDate ? dayjs(data.dueDate) : null,
+        priority: data.priority,
+        status: data.status,
+        storyPoints: data.storyPoints,
+        assignees: Array.isArray(data.assignees) ? data.assignees : [],
+        subtasks: mappedSubtasks || [],
+      });
+ 
+      // Set current description for the suggestion system
+      setCurrentDescription(data.description || '');
     }
-  };
-
-  
-const cardStyles = {
-  background: 'rgba(255, 255, 255, 0.95)',
-  borderRadius: '16px',
-  padding: '20px',
-  boxShadow: '0 12px 40px rgba(0, 0, 0, 0.15)',
-  border: '1px solid rgba(255, 255, 255, 0.3)',
-  backdropFilter: 'blur(10px)',
-  color: '#1f2937',
-  transition: 'all 0.3s ease',
-  position: 'relative' as const,
-  overflow: 'hidden',
-  width: '100%',
-  maxWidth: '320px',
-  height: 'auto',
-  minHeight: '300px',
-  cursor: 'default',
-  display: 'flex',
-  flexDirection: 'column' as const
+  }
+  setIsEditModalVisible(true);
 };
-
-const headerStyles = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'flex-start',
-  marginBottom: '16px',
-  position: 'relative' as const,
-  zIndex: 1,
-  flexShrink: 0
-};
-
-const metaStyles = {
-  flex: 1
-};
-
-const storyPointsStyles = {
-  display: 'flex',
-  flexDirection: 'column' as const,
-  alignItems: 'center',
-  background: 'linear-gradient(135deg, #667eea, #764ba2)',
-  borderRadius: '10px',
-  padding: '8px 12px',
-  minWidth: '50px',
-  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-  color: 'white'
-};
-
-const pointsLabelStyles = {
-  fontSize: '10px',
-  fontWeight: 600,
-  opacity: 0.9,
-  lineHeight: 1
-};
-
-const pointsValueStyles = {
-  fontSize: '18px',
-  fontWeight: 700,
-  lineHeight: 1
-};
-
-const editButtonStyles = {
-  position: 'absolute' as const,
-  top: '-10px',
-  right: '-10px',
-  color: '#667eea',
-  background: 'white',
-  border: '2px solid #667eea',
-  borderRadius: '50%',
-  width: '36px',
-  height: '36px',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-  transition: 'all 0.2s ease'
-};
-
-const contentStyles = {
-  marginBottom: '16px',
-  position: 'relative' as const,
-  zIndex: 1,
-  flexGrow: 1,
-  display: 'flex',
-  flexDirection: 'column' as const
-};
-
-const titleStyles = {
-  fontSize: '18px',
-  fontWeight: 700,
-  margin: '0 0 12px 0',
-  lineHeight: 1.3,
-  color: '#1f2937'
-};
-
-const descriptionStyles = {
-  fontSize: '14px',
-  lineHeight: 1.5,
-  margin: 0,
-  color: '#6b7280',
-  flexGrow: 1
-};
-
-const detailsStyles = {
-  marginBottom: '16px',
-  position: 'relative' as const,
-  zIndex: 1,
-  flexShrink: 0
-};
-
-const detailRowStyles = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: '8px',
-  fontSize: '13px'
-};
-
-const detailLabelStyles = {
-  fontWeight: 600,
-  color: '#6b7280',
-  display: 'flex',
-  alignItems: 'center'
-};
-
-const detailValueStyles = {
-  fontWeight: 600,
-  color: '#1f2937'
-};
-
-const taskIdStyles = {
-  fontFamily: "'Courier New', monospace",
-  background: '#f3f4f6',
-  padding: '3px 8px',
-  borderRadius: '6px',
-  fontSize: '11px',
-  color: '#667eea'
-};
-
-const subtasksStyles = {
-  marginBottom: '16px',
-  position: 'relative' as const,
-  zIndex: 1,
-  flexShrink: 0
-};
-
-const subtasksTitleStyles = {
-  fontSize: '14px',
-  fontWeight: 600,
-  margin: '0 0 8px 0',
-  color: '#374151'
-};
-
-const subtasksListStyles = {
-  listStyle: 'none',
-  padding: 0,
-  margin: 0
-};
-
-const subtaskItemStyles = {
-  display: 'flex',
-  alignItems: 'center',
-  fontSize: '13px',
-  marginBottom: '4px',
-  color: '#6b7280'
-};
-
-const subtaskBulletStyles = {
-  marginRight: '8px',
-  color: '#667eea',
-  fontWeight: 'bold'
-};
-
-const footerStyles = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  borderTop: '1px solid #e5e7eb',
-  paddingTop: '12px',
-  fontSize: '12px',
-  position: 'relative' as const,
-  zIndex: 1,
-  flexShrink: 0,
-  marginTop: 'auto'
-};
-const lastUpdatedStyles = {
-  color: '#9ca3af',
-  fontWeight: 500,
-  fontSize: '11px'
-};
-
-const assigneesStyles = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '6px',
-  color: '#6b7280'
-};
-
-const assigneesCountStyles = {
-  background: 'linear-gradient(135deg, #667eea, #764ba2)',
-  color: 'white',
-  padding: '4px 10px',
-  borderRadius: '12px',
-  fontWeight: 600,
-  fontSize: '11px',
-  boxShadow: '0 2px 8px rgba(102, 126, 234, 0.2)'
-};
-
-
- const [descriptionSuggestion, setDescriptionSuggestion] = useState("");
-  const [descriptionValue, setDescriptionValue] = useState("");
-
-const autoSubtaskTemplate = {
-  title: "Auto-generated Subtask",
-  description: "Implement the UI and validation for a login form.",
-  dueDate: dayjs().add(3, "days"),
-  priority: "Medium",
-  assignees: [],
-  status: "To Do",
-  storyPoints: 2
-};
-
-const getDescriptionSuggestion = (val:any) =>
-  val.length < 20
-    ? "Suggestion: Consider providing a bit more detail in your task description."
-    : "Suggestion: Your description looks clear.";
- const handleDescriptionChange = (e:any) => {
-    setDescriptionSuggestion(getDescriptionSuggestion(e.target.value));
+ 
+  // Handle Add Modal (for creating new tasks)
+  const handleAddClick = () => {
+    // Set default values for add mode
+    editForm.setFieldsValue({
+      title: '',
+      description: '',
+      dueDate: dayjs().add(7, 'days'),
+      priority: 'Medium',
+      status: 'To Do',
+      storyPoints: 1,
+      assignees: [],
+      subtasks: [],
+      comments: []
+    });
+    setCurrentDescription('');
+    setShowSuggestion(false);
+    setIsAddModalVisible?.(true);
   };
  
+  // Handle Cancel for Edit Modal
+  const handleEditCancel = () => {
+     setCurrentDescription("");
+    setIsEditModalVisible(false);
+    editForm.resetFields();
+  };
+ 
+  // Handle Cancel for Add Modal
+  const handleAddCancel = () => {
+    setIsAddModalVisible?.(false);
+    setShowSuggestion(false);
+    setDescriptionSuggestion("");
+    setCurrentDescription("");
+    editForm.resetFields();
+  };
+ 
+  // Handle Submit for Edit Modal (assignees only)
+ 
+const handleEditSubmit = async () => {
+  if (task) {
 
-  
+   const taskdata =await editForm.validateFields()
+    const res = await dispatch(EditTask({ id: task._id, payload:  taskdata }));
+    debugger
+    if (res?.payload?.data) {
+      const data = res.payload.data;
+ 
+      // Map subtasks to form format
+      const mappedSubtasks = data.subtasks?.map((subtask: any) => ({
+       
+        assignees: subtask.assignees || [],
+        status: subtask.status,
+      
+      }));
 
-  return (
-    <>
-      <div className="task-card" style={cardStyles}>
-        <div className="task-card-header" style={headerStyles}>
-          <div className="task-meta" style={metaStyles}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-              <Tag
-                color={getPriorityColor(task.priority)}
-                style={{ margin: 0, fontWeight: 600, fontSize: '10px' }}
-              >
-                <FlagOutlined style={{ marginRight: '4px' }} />
-                {task.priority}
-              </Tag>
-              <Tag
-                color={getStatusColor(task.status)}
-                style={{ margin: 0, fontWeight: 600, fontSize: '10px' }}
-              >
-                {getStatusIcon(task.status)}
-                <span style={{ marginLeft: '4px' }}>{task.status}</span>
-              </Tag>
+    const result=  await dispatch(EditTask({ id: task._id, payload:  taskdata }));
+
+     if(result?.payload?.data && result?.payload?.status===200){
+      message.success('Task updated successfully!');
+      await dispatch(getAllTask());
+      handleEditCancel();
+     }
+
+      editForm.setFieldsValue({
+        title: data.title,
+        description: data.description,
+        dueDate: data.dueDate ? dayjs(data.dueDate) : null,
+        priority: data.priority,
+        status: data.status,
+        storyPoints: data.storyPoints,
+        assignees: Array.isArray(data.assignees) ? data.assignees : [],
+        subtasks: mappedSubtasks || [],
+      });
+    }
+  }
+  setIsEditModalVisible(true);
+};
+ 
+  // Handle Submit for Add Modal (full task creation)
+  const handleAddSubmit = async () => {
+    try {
+      const values = await editForm.validateFields();
+     
+      // Prepare data for task creation
+      const newTaskData = {
+        title: values.title,
+        description: values.description,
+        dueDate: values.dueDate ? values.dueDate.toISOString() : null,
+        priority: values.priority,
+        assignees: values.assignees,
+        status: values.status,
+        storyPoints: values.storyPoints,
+        subtasks: values.subtasks?.map((subtask: any) => ({
+          title: subtask.title,
+          description: subtask.description,
+          dueDate: subtask.dueDate ? subtask.dueDate.toISOString() : null,
+          priority: subtask.priority,
+          assignees: subtask.assignees,
+          status: subtask.status,
+          storyPoints: subtask.storyPoints
+        })) || []
+      };
+ 
+     
+     const res= await dispatch(CreateTask(newTaskData));
+debugger
+      if (res?.payload?.data && res?.payload?.status === 201  ) {
+       dispatch(getAllTask());
+      message.success('Task created successfully!');
+      setIsAddModalVisible?.(false);}
+    } catch (error) {
+      console.error('Form validation failed:', error);
+      message.error('Please fill in all required fields');
+    }
+  };
+ 
+  // Only render task card if we have task data (edit mode)
+ 
+    return (
+      <>
+        <div className="task-card">
+          <div className="task-card-header">
+            <div className="task-meta">
+              <div className="task-card-tags">
+                <Tag color={getPriorityColor(task.priority)} className="task-card-priority-tag">
+                  <FlagOutlined />
+                  {task.priority}
+                </Tag>
+                <Tag color={getStatusColor(task.status)} className="task-card-status-tag">
+                  {getStatusIcon(task.status)}
+                  <span>{task.status}</span>
+                </Tag>
+              </div>
+            </div>
+            <div className="task-card-story-points">
+              <span className="sp-label">SP</span>
+              <span className="sp-label">{''}</span>
+              <span className="sp-value">
+  {totalStoryPoints}
+</span>
+ 
+            </div>
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={handleEditClick}
+              className="task-card-edit-btn"
+              size="small"
+            />
+          </div>
+                 <Popconfirm
+        title="Are you sure to delete this task?"
+        onConfirm={() => handleDelete(task._id)}
+        okText="Yes"
+        cancelText="No"
+      >
+        <Button
+          type="text"
+          danger
+          icon={<DeleteOutlined />}
+          className="task-card-delete-btn"
+          size="small"
+        />
+      </Popconfirm>
+
+          <div className="task-content">
+            <h3 className="task-card-title">{task.title}</h3>
+            <p className="task-card-description">{task.description}</p>
+          </div>
+         
+          <div className="task-details">
+            <div className="task-detail-row">
+              <span className="task-detail-label">
+                <CalendarOutlined />
+                Due:
+              </span>
+              <span className="task-detail-value">{formatDate(task?.dueDate)}</span>
+            </div>
+            <div className="task-detail-row">
+              <span className="task-detail-label">ID:</span>
+              <span className="task-card-id">{task._id.slice(-8)}</span>
             </div>
           </div>
-          <div style={storyPointsStyles}>
-            <span style={pointsLabelStyles}>SP</span>
-            <span style={pointsValueStyles}>{task.storyPoints}</span>
-          </div>
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={handleEditClick}
-            style={editButtonStyles}
-            size="small"
-          />
-        </div>
-
-        <div className="task-content" style={contentStyles}>
-          <h3 style={titleStyles}>{task.title}</h3>
-          <p style={descriptionStyles}>{task.description}</p>
-        </div>
-        <div className="task-details" style={detailsStyles}>
-          <div style={detailRowStyles}>
-            <span style={detailLabelStyles}>
-              <CalendarOutlined style={{ marginRight: '4px' }} />
-              Due:
-            </span>
-            <span style={detailValueStyles}>{formatDate(task?.dueDate)}</span>
-          </div>
-          <div style={detailRowStyles}>
-            <span style={detailLabelStyles}>ID:</span>
-            <span style={{ ...detailValueStyles, ...taskIdStyles }}>{task._id.slice(-8)}</span>
-          </div>
-        </div>
-        {subtaskTitles?.length > 0 && (
-          <div className="subtasks-section" style={subtasksStyles}>
-            <h4 style={subtasksTitleStyles}>Subtasks ({subtaskTitles?.length}):</h4>
-            <ul style={subtasksListStyles}>
-              {subtaskTitles.slice(0, 2)?.map((subtask:any, index:any) => (
-                <li key={index} style={subtaskItemStyles}>
-                  <span style={subtaskBulletStyles}>•</span>
-                  {subtask?.length > 25 ? `${subtask.substring(0, 25)}...` : subtask}
-                </li>
-              ))}
-              {subtaskTitles?.length > 2 && (
-                <li style={subtaskItemStyles}>
-                  <span style={subtaskBulletStyles}>•</span>
-                  +{subtaskTitles?.length - 2} more...
-                </li>
-              )}
-            </ul>
-          </div>
-        )}
-        <div className="task-footer" style={footerStyles}>
-          <div style={assigneesStyles}>
-            <UserOutlined style={{ marginRight: '4px', fontSize: '12px' }} />
-            <span style={assigneesCountStyles}>
-              {task.assignees?.length} assigned
-            </span>
-          </div>
-          <div style={lastUpdatedStyles}>
-            {formatDate(task.updatedAt)}
+         
+          {subtaskdata?.length > 0 && (
+           
+            <div className="subtasks-section">
+              <h4 className="subtasks-title">Subtasks ({subtaskdata?.length}):</h4>
+              <ul className="subtasks-list">
+                {subtaskdata.slice(0, 2)?.map((subtask: any, index: any) => (
+                  <li key={index} className="subtask-item">
+                    <span className="subtask-bullet">•</span>
+                    {subtask?.length > 25 ? `${subtask.substring(0, 25)}...` : subtask?.title}
+                  </li>
+                ))}
+                {subtaskdata?.length > 2 && (
+                  <li className="subtask-item">
+                    <span className="subtask-bullet">•</span>
+                    +{subtaskdata?.length - 2} more...
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+         
+          <div className="task-footer">
+            <div className="task-assignees">
+              <UserOutlined />
+              <span className="assignees-count">
+                {task.assignees?.length} assigned
+              </span>
+            </div>
+            <div className="task-last-updated">
+              {formatDate(task.updatedAt)}
+            </div>
           </div>
         </div>
-      </div>
-       <Modal
-      title={
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <EditOutlined />
-          <span>Edit Task</span>
-        </div>
-      }
-      open={isEditModalVisible}
-      onCancel={handleEditCancel}
-      width={800}
-      footer={[
-        <Button key="cancel" onClick={handleEditCancel}>Cancel</Button>,
-        <Button key="submit" type="primary" onClick={handleEditSubmit}>Save Changes</Button>,
-      ]}
-      destroyOnClose
-    >
-      <Form
-        form={editForm}
-        layout="vertical"
-        style={{ maxHeight: "70vh", overflowY: "auto", paddingRight: "8px" }}
-      >
-        <Form.Item
-          name="title"
-          label="Task Title"
-          rules={[{ required: true, message: "Please enter task title" }]}
-        >
-          <Input placeholder="Enter task title" />
-        </Form.Item>
-        <Form.Item
-  name="description"
-  label="Description"
-  rules={[{ required: true, message: 'Please enter task description' }]}
+ 
+     <Modal
+  title={
+    <div className="modal-title">
+      <EditOutlined />
+      <span>Edit Task</span>
+    </div>
+  }
+  open={isEditModalVisible}
+  onCancel={handleEditCancel}
+  width={800}
+  footer={[
+    <Button key="cancel" onClick={handleEditCancel}>
+      Cancel
+    </Button>,
+    <Button key="submit" type="primary" onClick={handleEditSubmit}>
+      Save Changes
+    </Button>,
+  ]}
+  destroyOnClose
 >
-  <div style={{ position: 'relative' }}>
-    <TextArea
-      rows={4}
-      placeholder="Enter task description"
-      onChange={handleDescriptionChange}
-      value={descriptionValue} // assuming you manage descriptionValue via useState
-    />
-    {descriptionSuggestion && (
-      <div
-        style={{
-          position: 'absolute',
-          top: 8,
-          right: 8,
-          zIndex: 1,
-          cursor: 'pointer',
-          background: '#fff',
-          borderRadius: '50%',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-          padding: 6,
-          border: '1px solid #dbeafe'
-        }}
-        title="Apply suggested improvement"
-        onClick={() => setDescriptionValue(descriptionSuggestion)}
+  <Form form={editForm} layout="vertical" className="task-form">
+  
+   
+ 
+  
+    <div className="form-row">
+    
+      <Form.Item
+        name="status"
+        label="Status"
+        className="form-item-flex"
+        rules={[{ required: true, message: "Please select status" }]}
       >
-        <MailOutlined style={{ color: '#3b82f6', fontSize: 18 }} />
-      </div>
-    )}
-  </div>
-</Form.Item>
-{descriptionSuggestion && (
-  <div style={{ color: "#3b82f6", fontSize: "13px", marginBottom: "10px" }}>
-    Suggestion: {descriptionSuggestion}
-  </div>
-)}
-
-        <div style={{ display: "flex", gap: "16px" }}>
-          <Form.Item name="priority" label="Priority" style={{ flex: 1 }}>
-            <Select placeholder="Select priority">
-              <Option value="High">
-                <FlagOutlined style={{ color: "#ef4444" }} /> High
-              </Option>
-              <Option value="Medium">
-                <FlagOutlined style={{ color: "#f59e0b" }} /> Medium
-              </Option>
-              <Option value="Low">
-                <FlagOutlined style={{ color: "#22c55e" }} /> Low
-              </Option>
-            </Select>
-          </Form.Item>
-          <Form.Item
-            name="status"
-            label="Status"
-            style={{ flex: 1 }}
-            rules={[{ required: true, message: "Please select status" }]}
-          >
-            <Select placeholder="Select status">
-              <Option value="To Do">To Do</Option>
-              <Option value="In Progress">In Progress</Option>
-              <Option value="Done">Done</Option>
-            </Select>
-          </Form.Item>
-        </div>
-        <div style={{ display: "flex", gap: "16px" }}>
-          <Form.Item name="dueDate" label="Due Date" style={{ flex: 1 }}>
-            <DatePicker
-              style={{ width: "100%" }}
-              placeholder="Select due date"
-              format="YYYY-MM-DD"
-            />
-          </Form.Item>
-          <Form.Item
-            name="storyPoints"
-            label="Story Points"
-            style={{ flex: 1 }}
-          >
-            <InputNumber
-              min={0}
-              max={100}
-              style={{ width: "100%" }}
-              placeholder="Enter story points"
-            />
-          </Form.Item>
-        </div>
-        <Form.Item name="assignees" label="Assignees">
-          <Input placeholder="Enter assignees (comma separated)" />
-        </Form.Item>
+        <Select placeholder="Select status">
+          <Option value="To Do">To Do</Option>
+          <Option value="In Progress">In Progress</Option>
+          <Option value="Done">Done</Option>
+          <Option value="Blocked">Blocked</Option>
+        </Select>
+      </Form.Item>
+    </div>
+ 
+  
+ 
+    <Form.Item
+      name="assignees"
+      label="Assignees"
+      rules={[{ required: true, message: "Please select assignees" }]}
+    >
+      <Select mode="multiple" placeholder="Select assignees">
+        {UserDataRes?.data?.map((user: any) => (
+          <Option key={user.id} value={user.id}>
+            {user.name}
+          </Option>
+        ))}
+      </Select>
+    </Form.Item>
+ 
+    {/* Subtasks */}
+    <Form.List name="subtasks">
+      {(fields) => (
         <Card
-          title="Status History"
+          title={
+            <div className="card-header">
+              <span>Subtasks</span>
+             
+            </div>
+          }
           size="small"
-          style={{ marginBottom: "16px" }}
-          bodyStyle={{ maxHeight: "150px", overflowY: "auto" }}
+          className="subtasks-card"
         >
-          <List
-            size="small"
-            dataSource={task.statusHistory}
-            renderItem={(item:any) => (
-              <List.Item style={{ padding: "4px 0", border: "none" }}>
-                <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <Tag color="blue">{item.from}</Tag>
-                    <span>→</span>
-                    <Tag color="green">{item.to}</Tag>
-                  </div>
-                  <Text type="secondary" style={{ fontSize: "12px" }}>
-                    {new Date(item.timestamp).toLocaleString()}
-                  </Text>
-                </div>
-              </List.Item>
-            )}
-          />
-        </Card>
-        <Form.List name="subtasks">
-          {(fields, { add, remove }) => (
+          {fields.map(({ key, name, ...restField }) => (
             <Card
+              key={key}
+              size="small"
+              className="subtask-card"
               title={
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span>Subtasks</span>
-                  <div>
-                    <Button
-                      type="dashed"
-                      icon={<PlusOutlined />}
-                      size="small"
-                      onClick={() => add()} style={{ marginRight: 8 }}
-                    >
-                      Add Subtask
-                    </Button>
-                    <Button
-                      type="default"
-                      size="small"
-                      onClick={() => add(autoSubtaskTemplate)}
-                    >
-                      Auto-Generate Subtask
-                    </Button>
-                  </div>
+                <div className="subtask-header">
+                  <Text strong>Subtask #{name + 1}</Text>
+                 
                 </div>
               }
-              size="small"
-              style={{ marginBottom: "16px" }}
-              bodyStyle={{ maxHeight: "300px", overflowY: "auto" }}
             >
-              {fields.map(({ key, name, ...restField }) => (
-                <Card
-                  key={key}
+            
+             
+              
+             
+              <div className="form-row">
+               
+               
+                <Form.Item
+                  {...restField}
+                  name={[name, "status"]}
+                  label="Status"
+                  className="form-item-flex"
+                  rules={[{ required: true, message: "Please select status" }]}
+                >
+                  <Select placeholder="Select status" size="small">
+                    <Option value="To Do">To Do</Option>
+                    <Option value="In Progress">In Progress</Option>
+                    <Option value="Done">Done</Option>
+                    <Option value="Blocked">Blocked</Option>
+                  </Select>
+                </Form.Item>
+              </div>
+             
+              <div className="form-row">
+              
+               
+             
+              </div>
+             
+              <Form.Item
+                {...restField}
+                name={[name, "assignees"]}
+                label="Assignees"
+                rules={[{ required: true, message: "Please select assignees" }]}
+              >
+                <Select
+                  mode="multiple"
+                  placeholder="Select assignees"
                   size="small"
-                  style={{ marginBottom: "12px", background: "#f8f9fa" }}
-                  title={
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <Text strong style={{ fontSize: "14px" }}>
-                        Subtask #{name + 1}
-                      </Text>
+                  optionFilterProp="children"
+                >
+                  {UserDataRes?.data?.map((user: any) => (
+                    <Option key={user.id} value={user.id}>
+                      {user.name}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Card>
+          ))}
+          {fields.length === 0 && (
+            <div className="empty-state">No subtasks found for this task.</div>
+          )}
+        </Card>
+      )}
+    </Form.List>
+  </Form>
+</Modal>
+ 
+ 
+        <Modal
+          mask={false}  
+        title={
+           <div className="modal-title">
+            <PlusOutlined />
+            <span>Create New Task</span>
+          </div>
+        }
+        open={isAddModalVisible}
+        onCancel={handleAddCancel}
+        width={800}
+        footer={[
+          <Button key="cancel" onClick={handleAddCancel}>Cancel</Button>,
+          <Button key="submit" type="primary" onClick={handleAddSubmit}>Create Task</Button>,
+        ]}
+        destroyOnClose
+      >
+        <Form form={editForm} layout="vertical" className="task-form">
+          <Form.Item
+            name="title"
+            label="Task Title"
+            rules={[{ required: true, message: "Please enter task title" }]}
+          >
+            <Input placeholder="Enter task title" />
+          </Form.Item>
+         
+          <Form.Item
+            name="description"
+            label="Description"
+            rules={[{ required: true, message: 'Please enter task description' }]}
+          >
+            <div className="description-input-wrapper">
+              <TextArea
+                rows={4}
+                placeholder="Enter task description"
+                onChange={handleDescriptionChange}
+                value={currentDescription}
+              />
+              {showSuggestion && (
+                <div
+                  className="suggestion-icon"
+                  title="Apply suggested improvement"
+                  onClick={()=>applySuggestion()}
+                >
+                  <MailOutlined />
+                </div>
+              )}
+            </div>
+          </Form.Item>
+         
+          {showSuggestion && (
+            <div className="suggestion-box">
+              💡 <strong>AI Suggestion:</strong> {descriptionSuggestion}
+            </div>
+          )}
+ 
+          <div className="form-row">
+            <Form.Item name="priority" label="Priority" className="form-item-flex">
+              <Select placeholder="Select priority">
+                <Option value="High">
+                  <FlagOutlined /> High
+                </Option>
+                <Option value="Medium">
+                  <FlagOutlined /> Medium
+                </Option>
+                <Option value="Low">
+                  <FlagOutlined /> Low
+                </Option>
+              </Select>
+            </Form.Item>
+            <Form.Item
+              name="status"
+              label="Status"
+              className="form-item-flex"
+              rules={[{ required: true, message: "Please select status" }]}
+            >
+              <Select placeholder="Select status">
+                <Option value="To Do">To Do</Option>
+                <Option value="In Progress">In Progress</Option>
+                <Option value="Done">Done</Option>
+              </Select>
+            </Form.Item>
+          </div>
+         
+          <div className="form-row">
+            <Form.Item name="dueDate" label="Due Date" className="form-item-flex">
+              <DatePicker
+                className="full-width"
+                placeholder="Select due date"
+                format="YYYY-MM-DD"
+              />
+            </Form.Item>
+            <Form.Item
+              name="storyPoints"
+              label="Story Points"
+              className="form-item-flex"
+            >
+              <InputNumber
+                min={0}
+                max={100}
+                className="full-width"
+                placeholder="Enter story points"
+              />
+            </Form.Item>
+          </div>
+         
+          <Form.Item
+  name="assignees"
+  label="Assignees"
+  rules={[{ required: true, message: "Please select assignees" }]}
+>
+  <Select
+    mode="multiple"
+    placeholder="Select assignees"
+    optionFilterProp="children"
+  >
+    {UserDataRes?.data?.map((user: any) => (
+      <Select.Option key={user.id} value={user.id}>
+        {user.name}
+      </Select.Option>
+    ))}
+  </Select>
+</Form.Item>
+         
+          <Form.List name="subtasks">
+            {(fields, { add, remove }) => (
+              <Card
+                title={
+                  <div className="card-header">
+                    <span>Subtasks</span>
+                    <div>
                       <Button
-                        type="text"
-                        danger
+                        type="dashed"
+                        icon={<PlusOutlined />}
                         size="small"
-                        onClick={() => remove(name)}
+                        onClick={() => add()}
+                        className="add-btn"
                       >
-                        Remove
+                        Add Subtask
+                      </Button>
+                      <Button
+                        type="primary"
+                        size="small"
+                        onClick={addIntelligentSubtask}
+                        className="smart-generate-btn"
+                      >
+                        🤖 Smart Generate
                       </Button>
                     </div>
-                  }
-                >
-                  <Form.Item
-                    {...restField}
-                    name={[name, "title"]}
-                    label="Subtask Title"
-                    rules={[{ required: true, message: "Please enter subtask title" }]}
-                  >
-                    <Input placeholder="Enter subtask title" />
-                  </Form.Item>
-                  <Form.Item
-                    {...restField}
-                    name={[name, "description"]}
-                    label="Description"
-                    rules={[{ required: true, message: "Please enter subtask description" }]}
-                  >
-                    <TextArea rows={2} placeholder="Enter subtask description" />
-                  </Form.Item>
-                  <div style={{ display: "flex", gap: "12px" }}>
-                    <Form.Item
-                      {...restField}
-                      name={[name, "priority"]}
-                      label="Priority"
-                      style={{ flex: 1 }}
-                    >
-                      <Select placeholder="Select priority" size="small">
-                        <Option value="High">High</Option>
-                        <Option value="Medium">Medium</Option>
-                        <Option value="Low">Low</Option>
-                      </Select>
-                    </Form.Item>
-                    <Form.Item
-                      {...restField}
-                      name={[name, "status"]}
-                      label="Status"
-                      style={{ flex: 1 }}
-                      rules={[{ required: true, message: "Please select status" }]}
-                    >
-                      <Select placeholder="Select status" size="small">
-                        <Option value="To Do">To Do</Option>
-                        <Option value="In Progress">In Progress</Option>
-                        <Option value="Done">Done</Option>
-                      </Select>
-                    </Form.Item>
                   </div>
-                  <div style={{ display: "flex", gap: "12px" }}>
+                }
+                size="small"
+                className="subtasks-card"
+              >
+                {fields.map(({ key, name, ...restField }) => (
+                  <Card
+                    key={key}
+                    size="small"
+                    className="subtask-card"
+                    title={
+                      <div className="subtask-header">
+                        <Text strong>Subtask #{name + 1}</Text>
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          onClick={() => remove(name)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    }
+                  >
                     <Form.Item
                       {...restField}
-                      name={[name, "dueDate"]}
-                      label="Due Date"
-                      style={{ flex: 1 }}
+                      name={[name, "title"]}
+                      label="Subtask Title"
+                      rules={[{ required: true, message: "Please enter subtask title" }]}
                     >
-                      <DatePicker
-                        style={{ width: "100%" }}
-                        placeholder="Select due date"
-                        format="YYYY-MM-DD"
-                        size="small"
-                      />
+                      <Input placeholder="Enter subtask title" />
                     </Form.Item>
                     <Form.Item
                       {...restField}
-                      name={[name, "storyPoints"]}
-                      label="Story Points"
-                      style={{ flex: 1 }}
+                      name={[name, "description"]}
+                      label="Description"
+                      rules={[{ required: true, message: "Please enter subtask description" }]}
                     >
-                      <InputNumber
-                        min={0}
-                        max={100}
-                        style={{ width: "100%" }}
-                        placeholder="Enter story points"
-                        size="small"
-                      />
+                      <TextArea rows={2} placeholder="Enter subtask description" />
                     </Form.Item>
+                    <div className="form-row">
+                      <Form.Item
+                        {...restField}
+                        name={[name, "priority"]}
+                        label="Priority"
+                        className="form-item-flex"
+                      >
+                        <Select placeholder="Select priority" size="small">
+                          <Option value="High">High</Option>
+                          <Option value="Medium">Medium</Option>
+                          <Option value="Low">Low</Option>
+                        </Select>
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "status"]}
+                        label="Status"
+                        className="form-item-flex"
+                        rules={[{ required: true, message: "Please select status" }]}
+                      >
+                        <Select placeholder="Select status" size="small">
+                          <Option value="To Do">To Do</Option>
+                          <Option value="In Progress">In Progress</Option>
+                          <Option value="Done">Done</Option>
+                        </Select>
+                      </Form.Item>
+                    </div>
+                    <div className="form-row">
+                      <Form.Item
+                        {...restField}
+                        name={[name, "dueDate"]}
+                        label="Due Date"
+                        className="form-item-flex"
+                      >
+                        <DatePicker
+                          className="full-width"
+                          placeholder="Select due date"
+                          format="YYYY-MM-DD"
+                          size="small"
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        {...restField}
+                        name={[name, "storyPoints"]}
+                        label="Story Points"
+                        className="form-item-flex"
+                      >
+                        <InputNumber
+                          min={0}
+                          max={100}
+                          className="full-width"
+                          placeholder="Enter story points"
+                          size="small"
+                        />
+                      </Form.Item>
+                    </div>
+                  <Form.Item
+  {...restField}
+  name={[name, "assignees"]}
+  label="Assignees"
+  rules={[{ required: true, message: "Please select assignees" }]}
+>
+  <Select
+    mode="multiple"
+    placeholder="Select assignees"
+    size="small"
+    optionFilterProp="children"
+    filterOption={(input, option) =>
+      (option?.children as unknown as string)
+        .toLowerCase()
+        .includes(input.toLowerCase())
+    }
+  >
+    {UserDataRes?.data?.map((user: { id: string; name: string }) => (
+      <Select.Option key={user.id} value={user.id}>
+        {user.name}
+      </Select.Option>
+    ))}
+  </Select>
+</Form.Item>
+ 
+                  </Card>
+                ))}
+                {fields?.length === 0 && (
+                  <div className="empty-state">
+                    No subtasks yet. Click "Add Subtask" or "🤖 Smart Generate" to create one.
                   </div>
-                  <Form.Item
-                    {...restField}
-                    name={[name, "assignees"]}
-                    label="Assignees"
-                  >
-                    <Input placeholder="Enter assignees (comma separated)" size="small" />
-                  </Form.Item>
-                </Card>
-              ))}
-              {fields?.length === 0 && (
-                <div style={{ textAlign: "center", color: "#999", padding: "20px" }}>
-                  No subtasks yet. Click "Add Subtask" to create one.
-                </div>
-              )}
-            </Card>
-          )}
-        </Form.List>
-        {/* Comments section stays unchanged */}
-        <Form.List name="comments">
-          {(fields, { add, remove }) => (
-            <Card
-              title={
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span>Comments</span>
-                  <Button type="dashed" onClick={() => add()} size="small">
-                    Add Comment
-                  </Button>
-                </div>
-              }
-              size="small"
-              bodyStyle={{ maxHeight: "200px", overflowY: "auto" }}
-            >
-              {fields?.map(({ key, name, ...restField }) => (
-                <div key={key} style={{ marginBottom: "12px", padding: "8px", background: "#fafafa", borderRadius: "6px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                    <Text strong style={{ fontSize: "12px" }}>
-                      Comment #{name + 1}
-                    </Text>
-                    <Button
-                      type="text"
-                      danger
-                      size="small"
-                      onClick={() => remove(name)}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                  <Form.Item
-                    {...restField}
-                    name={[name, "author"]}
-                    label="Author"
-                    rules={[{ required: true, message: "Please enter author" }]}
-                  >
-                    <Input placeholder="Author name or ID" size="small" />
-                  </Form.Item>
-                  <Form.Item
-                    {...restField}
-                    name={[name, "text"]}
-                    label="Comment"
-                    rules={[{ required: true, message: "Please enter comment text" }]}
-                  >
-                    <TextArea rows={2} placeholder="Enter comment text" size="small" />
-                  </Form.Item>
-                  <Form.Item
-                    {...restField}
-                    name={[name, "timestamp"]}
-                    label="Timestamp"
-                    initialValue={new Date().toISOString()}
-                  >
-                    <Input placeholder="Timestamp" size="small" disabled />
-                  </Form.Item>
-                </div>
-              ))}
-              {fields?.length === 0 && (
-                <div style={{ textAlign: "center", color: "#999", padding: "20px" }}>
-                  No comments yet. Click "Add Comment" to add one.
-                </div>
-              )}
-            </Card>
-          )}
-        </Form.List>
-      </Form>
-    </Modal>
-    </>
-  );
+                )}
 
+                <div className="comments-section">
+                <div className="comments-header">
+               <h4 className="comments-title">Comments</h4>
+                 <Button
+      type="primary"
+      size="small"
+      icon={<PlusOutlined />}
+      // onClick={handleAddComment}
+      className="add-comment-btn"
+    >
+      Add Comment
+    </Button>
+  </div>
+  </div>
 
-  
+  <Form.Item name="comments" style={{ display: 'none' }}>
+    <Input />
+  </Form.Item>
+              </Card>
+
+              
+            )}
+          </Form.List>
+        </Form>
+      </Modal>
+      </>
+    );
+ 
+ 
 };
-
+ 
 export default TaskCard;
+ 

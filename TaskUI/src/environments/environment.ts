@@ -4,4 +4,5 @@ export const environment = {
 	
 	OAUTH_USER_URL: 'http://localhost:5000/auth',
 	TASK_URL: 'http://localhost:5000/tasks',
+
 };

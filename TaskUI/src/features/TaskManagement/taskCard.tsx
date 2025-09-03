@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Input, Select, DatePicker, InputNumber, Button, Space, List, Card, Typography, Tag, message, Popconfirm } from 'antd';
+import { Modal, Form, Input, Select, DatePicker, InputNumber, Button, Space, List, Card, Typography, Tag, message, Popconfirm, Spin } from 'antd';
 import { EditOutlined, UserOutlined, CalendarOutlined, FlagOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, PlusOutlined, MailOutlined, DeleteOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useDispatch, useSelector } from 'react-redux';
@@ -29,6 +29,9 @@ const TaskCard: React.FC<any> = ({
   onTaskCreate
 }) => {
   const { task, subtasks,totalStoryPoints } = taskData || {};
+
+  const {AiSubTaskLoad } = useSelector((state: RootState) => state?.AiSubTask);
+   const {AiStoryLoad } = useSelector((state: RootState) => state?.AiStory);
   const subtaskdata=subtasks;
  
   console.log(subtaskdata,task);
@@ -604,7 +607,7 @@ debugger
                   title="Apply suggested improvement"
                   onClick={()=>applySuggestion()}
                 >
-                  <MailOutlined />
+                 {AiStoryLoad?<Spin/>:<MailOutlined />} 
                 </div>
               )}
             </div>
@@ -706,7 +709,7 @@ debugger
                         onClick={addIntelligentSubtask}
                         className="smart-generate-btn"
                       >
-                        🤖 Smart Generate
+                       {AiSubTaskLoad? <Spin/>:'🤖 Smart Generate'}
                       </Button>
                     </div>
                   </div>

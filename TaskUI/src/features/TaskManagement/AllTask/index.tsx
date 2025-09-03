@@ -184,6 +184,15 @@ const TaskCardContainer: React.FC = () => {
               <span style={statNumberStyles}>{tasks?.filter((t:any) => t.task.status === 'In Progress')?.length}</span>
               <span style={statLabelStyles}>In Progress</span>
             </div>
+
+             <div style={statItemStyles}>
+              <span style={statNumberStyles}>{tasks?.filter((t:any) => t.task.status === 'Blocked')?.length}</span>
+              <span style={statLabelStyles}>Blocked</span>
+            </div>
+              <div style={statItemStyles}>
+              <span style={statNumberStyles}>{tasks?.filter((t:any) => t.task.status === 'To Do')?.length}</span>
+              <span style={statLabelStyles}>To Do</span>
+            </div>
           </div>
         </div>
       </div>

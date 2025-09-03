@@ -9,9 +9,6 @@ import { LoginUser, resetLoginUser } from '../../../redux/features/auth/UserLogi
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
-
-
-
 const LoginPage: React.FC = () => {
 	const dispatch=useDispatch();
 	const { LoginUserLoad,LoginUserRes }: any = useSelector((state: RootState) => state?.auth);
@@ -19,10 +16,10 @@ const LoginPage: React.FC = () => {
 	
   
 	useEffect(() => {
-		if (LoginUserRes.data && LoginUserRes?.data?.status === 200) {
-			sessionStorage.setItem('user', JSON.stringify(LoginUserRes?.token));
+		if (LoginUserRes.data && LoginUserRes?.success === true) {
+			sessionStorage.setItem('user', JSON.stringify(LoginUserRes.data));
              navigate('/tasks');
-		}  else if(LoginUserRes.data && LoginUserRes?.data?.status === 401){
+		}  else if(LoginUserRes.data && LoginUserRes?.success === false){
 			
 			   message.error(LoginUserRes?.data?.message || "Login failed. Please try again.");
 		}

@@ -1,4 +1,4 @@
-import { Button, Card, Form, Input, Layout, message, Typography } from 'antd';
+import { Button, Card, Form, Input, Layout, message, Spin, Typography } from 'antd';
 import React, { useEffect } from 'react';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import './loginPage.css';
@@ -123,7 +123,7 @@ const LoginPage: React.FC = () => {
 											block
 											className="task-login-button"
 										>
-											Sign In
+											{LoginUserLoad ? <Spin/> : 'Login'}
 										</Button>
 									</Form.Item>
 								</Form>
